@@ -6,4 +6,4 @@ The current code only includes the neural network algorithm part. The C++ code f
 Please update the file paths in the C++ code to match the local host environment. The current version supports direct image-based object detection.
 
 演示效果：
-<img width="1571" height="894" alt="image" src="https://github.com/user-attachments/assets/d3d0015a-9dd3-4eeb-a358-9046ab45db72" />
+<img width="390" height="295" alt="image" src="https://github.com/user-attachments/assets/8ab87970-a3cb-4341-a2da-4dccf42c9e3e" />
