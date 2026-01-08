@@ -1,8 +1,8 @@
 中文_Chinese：
-现有的代码只包括神经网络算法部分，论文中加入传统算法的C++代码会在结束大学后续比赛后发布。
+现有的代码只有onnx版本，开发板部署的tensorRT版本会在结束所有比赛后发布。
 注意修改C++中的path，修改为主机位置，现版本可以直接运行图像检测。
 英文_English：
-The current code only includes the neural network algorithm part. The C++ code for the traditional algorithm added in the paper will be released after the university follow-up competitions have concluded.
+The existing code is only available in the ONNX version, and the TensorRT version for deployment on the development board will be released after all competitions have ended.
 Please update the file paths in the C++ code to match the local host environment. The current version supports direct image-based object detection.
 
 演示效果：
