@@ -1,4 +1,5 @@
-//注释部分使用的Gemini3 pro进行添加的
+//注释部分使用了 Gemini3 pro 进行补充注释
+
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -198,6 +199,7 @@ class AcceleratedFAST
 {
 public:
     AcceleratedFAST(int threshold = 20, bool nonmaxSuppression = true);
+    // 只在检测框内检测 FAST 点，返回全局坐标点列表
     vector<Point2f> detect_features(const Mat& frame, const vector<Detection>& yolo_detections);
 
 private:
@@ -212,42 +214,45 @@ AcceleratedFAST::AcceleratedFAST(int threshold, bool nonmaxSuppression)
 
 vector<Point2f> AcceleratedFAST::detect_features(const Mat& frame, const vector<Detection>& yolo_detections)
 {
-    // 转换为灰度图
+    vector<Point2f> stable_points;
+
+    if (frame.empty() || yolo_detections.empty()) {
+        return stable_points; // nothing to do
+    }
+
+    // 转换为灰度图一次，然后在每个 ROI 上处理
     Mat gray_frame;
     cvtColor(frame, gray_frame, COLOR_BGR2GRAY);
 
-    // 提取 FAST 特征点
-    vector<KeyPoint> keypoints;
-    fast->detect(gray_frame, keypoints);
+    // 为避免重复点或过多点，可选限流参数（例如每个 ROI 最多保留 N 点）
+    const size_t MAX_POINTS_PER_ROI = 500;
 
-    // 转换为 Point2f 格式
-    vector<Point2f> points;
-    for (const auto& kp : keypoints) {
-        points.push_back(kp.pt);
-    }
+    for (const auto& det : yolo_detections) {
+        // 将 ROI 裁剪到图像范围
+        Rect roi = det.box & Rect(0, 0, frame.cols, frame.rows);
+        if (roi.width <= 2 || roi.height <= 2) continue;
 
-    // 语义引导过滤：过滤掉落在动态目标（如被追踪的无人机）上的点
-    vector<Point2f> stable_points;
-    for (const auto& pt : points) {
-        bool is_dynamic = false;
+        // 把 ROI 中对应的灰度图取出来
+        Mat roi_gray = gray_frame(roi);
 
-        // 遍历 YOLO 检测结果
-        for (const auto& det : yolo_detections) {
-            // 假设 Class ID 0 代表被追踪的无人机（动态目标）
-            // 根据您的实际 YOLO 模型调整这个条件
-            if (det.classId == 0) {
-                const Rect& box = det.box;
-                // 检查点是否在检测框内
-                if (pt.x >= box.x && pt.x <= box.x + box.width &&
-                    pt.y >= box.y && pt.y <= box.y + box.height) {
-                    is_dynamic = true;
-                    break;
-                }
-            }
+        // 在 ROI 上检测 FAST 特征
+        vector<KeyPoint> kp_roi;
+        fast->detect(roi_gray, kp_roi);
+
+        // 如果太多点，按响应排序并截断
+        if (kp_roi.size() > MAX_POINTS_PER_ROI) {
+            sort(kp_roi.begin(), kp_roi.end(), [](const KeyPoint& a, const KeyPoint& b) {
+                return a.response > b.response;
+            });
+            kp_roi.resize(MAX_POINTS_PER_ROI);
         }
 
-        if (!is_dynamic) {
-            stable_points.push_back(pt);
+        // 将 ROI 局部坐标转为全局坐标并加入结果列表
+        for (const auto& kp : kp_roi) {
+            Point2f pt_global(kp.pt.x + roi.x, kp.pt.y + roi.y);
+
+            // 可选：如果只想要落在某类（例如非动态目标）内的点，可在这里筛选
+            stable_points.push_back(pt_global);
         }
     }
 
@@ -416,7 +421,7 @@ int main()
             cerr << "无法打开视频文件: " << videoPath << endl;
 
             // 如果视频打开失败，尝试使用单张图片
-            string imgPath = "D:/dataset/UAV/yolo_format/test/images/00277.jpg";
+            string imgPath = "D:/dataset/UAV/yolo_format/test/images/00279.jpg";
             Mat frame = imread(imgPath);
             if (frame.empty()) {
                 cerr << "也无法读取测试图片: " << imgPath << endl;
@@ -546,4 +551,3 @@ int main()
 
     return 0;
 }
-
